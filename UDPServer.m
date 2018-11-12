@@ -1,30 +1,39 @@
 classdef UDPServer < handle
-    %UDPSERVER Summary of this class goes here
+    %UDPSERVER Implementation of a UDP DatagramSocket (Java) server
     %   Detailed explanation goes here
     % EXAMPLE
     %
+    % Date
+    % Version
         
     properties (Access = public)
-        
     end
     
     properties (GetAccess = public, SetAccess = protected)
-        interface;    % Network interface the server listens on
-        ip;           % IP-address the server listens on
-        ipv6;         % IP-address the server listens on
-        port;         % UDP-port the server listens to (required property)
-        MTU;          % Maximum transfer unit
-        timerInterval % Timer interval in ms to check for incoming data
+        interface;         % Network interface the server listens on
+        ip;                % IPv4-address the server listens on
+        ipv6;              % IPv6-address the server listens on
+        port;              % UDP-port the server listens on (required property)
+        MTU;               % Maximum transfer unit (default: 1500 byte)
+        timerInterval = 20 % Interval (ms) to check for new data (default: 20 ms)
     end
     
     properties (Access = private)
-        serverIface;    % NetworkInterface object (Java)
-        inetAddress;    % InetAddress object (Java)
-        rxTimer;        % Timer object
-        rxBuffer;       % Receive byte buffer (length of MTU)
-        dataPacket;     % DatagramPacket object (Java)
-        dataSocket;     % DatagramSocket object (Java)
-        socketOpened;   % Flag to indicate if socket/port is still open
+        serverIface;       % NetworkInterface object (Java)
+        inetAddress;       % InetAddress object (Java)
+        soTimeout = 10;    % Timeout (ms) for datagramSocket object (Java)
+        rxTimer;           % Timer object
+        rxBuffer;          % Receive buffer
+        rxBufferSize = 20; % Maximum number of elements in rxBuffer
+        dpBuffer;          % Receive byte buffer for datagram packet (length of MTU)
+        dataPacket;        % DatagramPacket object (Java)
+        dataSocket;        % DatagramSocket object (Java)
+        socketOpened;      % Flag to indicate if socket/port is still open
+        running;           % Flag to indicate if receiving is started
+    end
+    
+    events
+        DataReceived;
     end
     
     methods (Access = public)
@@ -337,12 +346,16 @@ classdef UDPServer < handle
             end
             
             % Create an empty byte 
-            obj.rxBuffer = uint8(zeros(1, obj.MTU));
+            obj.dpBuffer = uint8(zeros(1, obj.MTU));
             
-            % Create a datagram packet
-            obj.dataPacket = DatagramPacket(obj.rxBuffer, obj.MTU);
+            % Create a datagram packet that will be used for temp. storin
+            % received data
+            obj.dataPacket = DatagramPacket(obj.dpBuffer, obj.MTU);
             
-            % Flag to indicate if port is opened
+            % Create rxBuffer
+            obj.rxBuffer = cell(0);
+            
+            % Reset flag to indicate if port is opened
             obj.socketOpened = 0;
             
             % Check if port is free!
@@ -350,72 +363,251 @@ classdef UDPServer < handle
                 obj.dataSocket = DatagramSocket(obj.port, obj.inetAddress);
                 obj.dataSocket.close();
             catch ME
+                warning('Unable to create/bind a DatagramSocket to interface or port!');
                 switch (ME.identifier)
                     % Check for Java exceptions
                     case 'MATLAB:Java:GenericException'
                         excobj = ME.ExceptionObject;
                         switch (class(excobj))
                             case 'java.net.BindException'
-                                warning('Unable to open UDP port %d! Port is already in use...', obj.port);
+                                warning('Port %d is already in use!', obj.port);
                             otherwise
-                                disp(class(excobj));
+                                warning('Something went wrong... Java-Exception: %s', class(excobj))
                         end
-                        rethrow(ME);
-                        % Check for MATLAB exceptions
+                        
+                    % Check for MATLAB exceptions
                     otherwise
+                        % Try to close the port at least...
                         try
                             obj.dataSocket.close();
                         catch
+                            % Do nothing...
                         end
+                        
+                end
+                % rethrow the Exception
+                rethrow(ME);
+            end
+            
+            % Intialize timer properties
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Create timer object
+            obj.rxTimer = timer;
+            % Specifying a tag for the timer
+            obj.rxTimer.Tag = sprintf('Timer UDP server port %d', obj.port);
+            % Equidistant firing
+            obj.rxTimer.ExecutionMode = 'fixedRate';
+            % No start delay
+            obj.rxTimer.StartDelay = 0;
+            % Timer interval
+            obj.rxTimer.Period = obj.timerInterval / 1000;
+            % Timer callback
+            obj.rxTimer.TimerFcn = {@obj.rxTimerCallback};
+            % Reset flag to indicate if timer is running
+            obj.running = 0;
+        end
+        
+        function setMTU(obj, mtu)
+            %SETMTU Setting the maximum transfer unit
+        end
+        
+        function setTimerInterval(obj, interval)
+            %SETTIMERINTERVAL Adjust the interval of the timer
+            
+            % Check attributes
+            validateattributes(interval, {'numeric'}, {'real', 'positive', '>=', 20}, 'setTimerInterval', 'interval');
+            
+            if (obj.running)
+                warning('Unable to set timer interval while timer is running!');
+                return;
+            end
+            
+            % Set property
+            obj.timerInterval  = interval;
+            
+            % Adjust timer...
+            obj.rxTimer.Period = obj.timerInterval / 1000;
+        end
+        
+        function start(obj)
+            %START Start the UDP server and listen on specified port!
+            
+            % Necessary Java imports
+            import java.net.*;
+            
+            % Check that at least one event listener is registered
+            if ( ~event.hasListener(obj, 'DataReceived') )
+                warning('No listener defined for UDPserver...');
+            end
+        
+            % Open UDP DatagramSocket on specified port and interface...
+            if (obj.socketOpened == 0)
+                try
+                    obj.dataSocket = DatagramSocket(obj.port, obj.inetAddress);
+                    disp(['Opening UDP port ' num2str(obj.port)]);
+                catch ME
+                    warning('Unable to create/bind a DatagramSocket to interface or port!');
+                    switch (ME.identifier)
+                        % Check for Java exceptions
+                        case 'MATLAB:Java:GenericException'
+                            excobj = ME.ExceptionObject;
+                            switch (class(excobj))
+                                case 'java.net.BindException'
+                                    warning('Port %d is already in use!', obj.port);
+                                otherwise
+                                    warning('Something went wrong... Java-Exception: %s', class(excobj))
+                            end
+                            
+                        % Check for MATLAB exceptions
+                        otherwise
+                            % Try to close the port at least...
+                            try
+                                obj.dataSocket.close();
+                                obj.socketOpened = 0;
+                            catch
+                                % Do nothing...
+                            end
+                            
+                    end
+                    % rethrow the Exception
+                    rethrow(ME);
+                end
+            end
+            
+            % Set flag to indicate that the server was opened
+            obj.socketOpened = 1;
+            
+            % Set read timeout...
+            obj.dataSocket.setSoTimeout(10);
+                
+            % If timer was already running, switch it off!
+            if ( strcmpi(obj.rxTimer.Running, 'on') )
+                stop(obj.rxTimer);
+                obj.running = 0;
+            end
+            
+            start(obj.rxTimer);
+            obj.running = 1;
+        end
+                
+        function stop(obj)
+            %STOP
+            
+            % Necessary Java imports
+            import java.net.*;
+            
+            % First we have to stop the timer
+            stop(obj.rxTimer);
+            obj.running = 0;
+            
+            % Now close the UDP port
+            if (obj.socketOpened)
+                try
+                    obj.dataSocket.close();
+                    obj.socketOpened = 0;
+                catch ME
+                    warning('Unable to close the DatagramSocket (Java UDP implementation)!');
+                    % Rethrow the Exception
+                    rethrow(ME);
+                end
+            end
+        end
+        
+        function packet = getPacket(obj)
+            
+            if (length(obj.rxBuffer) > 0) %#ok<ISMT>
+                packet = obj.rxBuffer{1};
+                obj.rxBuffer(1) = [];
+            else
+                packet = [];
+            end
+        end
+        
+        function delete(obj)
+            %DELETE Destructor of this class
+            
+            %disp('UDPServer destructor');
+            
+            % Necessary Java imports
+            import java.net.*;
+            
+            % First, stop the rxTimer
+            if (obj.running == 1)
+                stop(obj.rxTimer);
+            end
+            
+            % Delete the timer object - free ressources
+            delete(obj.rxTimer);
+            %disp('Stopping timer... ')
+            
+            % Now close the socket/port
+            if ( obj.socketOpened )
+                obj.dataSocket.close()
+                disp(['Closing UDP port ' num2str(obj.port)]);
+            end
+        end % delete function -> destructor!
+    end % public methods
+    
+    methods (Access = private)
+        function rxTimerCallback(udpObj, timerObj, eventData)
+            
+            dataReceived = 0;
+            % Try to access the datagramSocket
+            try
+                 udpObj.dataSocket.receive(udpObj.dataPacket);
+                 dataReceived = 1;
+            catch ME
+                switch (ME.identifier)
+                    % Check for Java exceptions
+                    case 'MATLAB:Java:GenericException'
+                        excobj = ME.ExceptionObject;
+                        switch (class(excobj))
+                            case 'java.net.SocketTimeoutException'
+                                %disp('TimeOut');
+                            otherwise
+                                disp(class(excobj));
+                        end
+                        
+                        % Check for MATLAB exceptions
+                    otherwise
+                        udpObj.dataSocket.close();
                         rethrow(ME);
                 end
             end
             
-            % Timer interval
-            obj.timerInterval = 10;
-            
-            % Set and initialze timer
-            obj.rxTimer = timer;
-            obj.rxTimer.StartDelay = 0;
-            obj.rxTimer.Period     = 0.01;
-            obj.rxTimer.ExecutionMode = 'fixedSpacing';
-            
-            obj.rxTimer.TimerFcn   = {@UDPServerTimerCallback, ds, dp};
-            
-            %start(rx_timer);
-            
-            
-            
-        end
-        
-        function delete(obj)
-            if ( obj.socketOpened )
-                try
-                    obj.dataSocket.close()
-                catch ME
-                    rethrow(ME)
+            if (dataReceived)
+                % Get some values from the received datagramPacket and
+                % store them in a struct
+                receivedPacket.remoteIP   = char(udpObj.dataPacket.getAddress().toString());
+                receivedPacket.remotePort = udpObj.dataPacket.getPort();
+                receivedPacket.length     = udpObj.dataPacket.getLength();
+                % Check data field of received packet
+                if (receivedPacket.length > 0)
+                    data       = uint8(udpObj.dataPacket.getData());
+                    receivedPacket.data = data(1:receivedPacket.length);
+                    clear data;
+                else
+                    receivedPacket.data = [];
                 end
-            end
-        end
-        
-        function start(obj)
-            % Open port
-            % start timer
-        end
                 
-        function obj = stop(obj)
-            
-        end
-        
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
-        end
-    end
-    
-    methods (Access = private)
-    end
+                % Store temporary struct in the rxBuffer of the UDPServer object
+                udpObj.rxBuffer{end+1} = receivedPacket;
+                
+                % Delete temp struct
+                clear receivedPacket;
+                
+                % Check if rxBuffer is "full"
+                numPackets = length(udpObj.rxBuffer);
+                if ( numPackets > udpObj.rxBufferSize )
+                    warning('UDPServer rxBuffer full! Dropping older packets...');
+                    udpObj.rxBuffer(1:(numPackets-udpObj.rxBufferSize)) = [];
+                end
+                
+                % Finally, call all attached listeners!
+                notify(udpObj, 'DataReceived');
+            end
+        end % rxTimerCallback
+    end % private methods
     
     methods (Static)
         function ifaces = availableInterfaces()
@@ -443,7 +635,6 @@ classdef UDPServer < handle
                 ifaces(end,  2) = currIface.getInterfaceAddresses().toString();
                 ifaces(end,  3) = currIface.toString();
             end 
-        end
-    end
-end
-
+        end % availableInterfaces()
+    end % static methods
+end % classdef
