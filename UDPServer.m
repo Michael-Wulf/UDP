@@ -9,19 +9,22 @@ classdef UDPServer < handle
     end
     
     properties (GetAccess = public, SetAccess = protected)
-        port;      % UDP-port the server listens to (required property)
-        ip;        % IP-address the server listens on
-        ipv6;
-        interface; % Network interface the server listens on
-        MTU;       % Maximum transfer unit
+        interface;    % Network interface the server listens on
+        ip;           % IP-address the server listens on
+        ipv6;         % IP-address the server listens on
+        port;         % UDP-port the server listens to (required property)
+        MTU;          % Maximum transfer unit
+        timerInterval % Timer interval in ms to check for incoming data
     end
     
     properties (Access = private)
-        serverIface;
-        inetAddr;
-        rxTimer;
-        rxBuffer;
-        
+        serverIface;    % NetworkInterface object (Java)
+        inetAddress;    % InetAddress object (Java)
+        rxTimer;        % Timer object
+        rxBuffer;       % Receive byte buffer (length of MTU)
+        dataPacket;     % DatagramPacket object (Java)
+        dataSocket;     % DatagramSocket object (Java)
+        socketOpened;   % Flag to indicate if socket/port is still open
     end
     
     methods (Access = public)
@@ -281,29 +284,127 @@ classdef UDPServer < handle
             clear ifaceFound currIface
             
             % Set properties to the object...
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            % Set port
             obj.port = properties.port;
             
+            % Set IP addresses
+            obj.ip   = '';
+            obj.ipv6 = '';
+            
+            % Check that interface has at least one valid IP address
             inetEnum = obj.serverIface.getInetAddresses();
-            if ( isempty(inet_enum) )
+            if ( isempty(inetEnum) )
                 ME = MException('UDPServer:noInterfaceAddressFound', ...
                     'Interface %s has no inet address', server_iface_name);
                 throw(ME);
             end
             
-            obj.inetAddr = [];
+            obj.inetAddress = [];
             
-            if (ipVersion == 0)
-                obj.inetAddr = inetEnum.nextElement;
+            % Interate through all IP addresses
+            while ( inetEnum.hasMoreElements() )
+                currInet = inetEnum.nextElement();
+                % Cast to string
+                tempString = char(currInet);
+                
+                if ( strcmpi(class(currInet), 'java.net.Inet4Address') )
+                    obj.ip = tempString(2:end);
+                    
+                    if ( ipVersion < 6)
+                        obj.inetAddress = currInet;
+                    end
+                    
+                elseif ( strcmpi(class(currInet), 'java.net.Inet6Address') )
+                    obj.ipv6 = tempString(2:end);
+                    if ( ipVersion == 6)
+                        obj.inetAddress = currInet;
+                    end
+                    
+                end
+            end
+            clear inetEnum currInet tempString;
+            
+            % Set interface name
+            obj.interface = char(obj.serverIface.getName());
+            
+            % Set MTU
+            if ( obj.serverIface.isLoopback() )
+                obj.MTU = 1500;
             else
+                obj.MTU = obj.serverIface.getMTU();
             end
             
-            disp('huhu');
+            % Create an empty byte 
+            obj.rxBuffer = uint8(zeros(1, obj.MTU));
+            
+            % Create a datagram packet
+            obj.dataPacket = DatagramPacket(obj.rxBuffer, obj.MTU);
+            
+            % Flag to indicate if port is opened
+            obj.socketOpened = 0;
+            
+            % Check if port is free!
+            try
+                obj.dataSocket = DatagramSocket(obj.port, obj.inetAddress);
+                obj.dataSocket.close();
+            catch ME
+                switch (ME.identifier)
+                    % Check for Java exceptions
+                    case 'MATLAB:Java:GenericException'
+                        excobj = ME.ExceptionObject;
+                        switch (class(excobj))
+                            case 'java.net.BindException'
+                                warning('Unable to open UDP port %d! Port is already in use...', obj.port);
+                            otherwise
+                                disp(class(excobj));
+                        end
+                        rethrow(ME);
+                        % Check for MATLAB exceptions
+                    otherwise
+                        try
+                            obj.dataSocket.close();
+                        catch
+                        end
+                        rethrow(ME);
+                end
+            end
+            
+            % Timer interval
+            obj.timerInterval = 10;
+            
+            % Set and initialze timer
+            obj.rxTimer = timer;
+            obj.rxTimer.StartDelay = 0;
+            obj.rxTimer.Period     = 0.01;
+            obj.rxTimer.ExecutionMode = 'fixedSpacing';
+            
+            obj.rxTimer.TimerFcn   = {@UDPServerTimerCallback, ds, dp};
+            
+            %start(rx_timer);
+            
+            
+            
+        end
+        
+        function delete(obj)
+            if ( obj.socketOpened )
+                try
+                    obj.dataSocket.close()
+                catch ME
+                    rethrow(ME)
+                end
+            end
         end
         
         function start(obj)
+            % Open port
+            % start timer
         end
                 
         function obj = stop(obj)
+            
         end
         
         function outputArg = method1(obj,inputArg)
