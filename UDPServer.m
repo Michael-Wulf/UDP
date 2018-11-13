@@ -63,13 +63,13 @@ classdef UDPServer < handle
         ipv6;               % IPv6-address the server listens on
         port;               % UDP-port the server listens on (required property)
         MTU;                % Maximum transfer unit (default: 1500 byte)
-        timerInterval = 20; % Interval (ms) to check for new data (default: 20 ms)
+        timerInterval = 50; % Interval (ms) to check for new data (default: 50 ms)
     end
     
     properties (Access = private)
         serverIface;       % NetworkInterface object (Java)
         inetAddress;       % InetAddress object (Java)
-        soTimeout = 10;    % Timeout (ms) for datagramSocket object (Java)
+        soTimeout = 1;     % Timeout (ms) for datagramSocket object (Java)
         rxTimer;           % Timer object
         rxBuffer;          % Receive buffer
         rxBufferSize = 20; % Maximum number of elements in rxBuffer
@@ -629,6 +629,7 @@ classdef UDPServer < handle
                 try
                     obj.dataSocket.close();
                     obj.socketOpened = 0;
+                    disp(['Closing UDP port ' num2str(obj.port)]);
                 catch ME
                     warning('Unable to close the DatagramSocket (Java UDP implementation)!');
                     % Rethrow the Exception
@@ -652,6 +653,13 @@ classdef UDPServer < handle
             else
                 packet = [];
             end
+        end
+        
+        function numPackets = available(obj)
+            %AVAILABLE Indicates how many received datagrams are in the receive buffer
+            
+            % Just return the length of rxBuffer
+            numPackets = length(obj.rxBuffer);
         end
         
         function delete(obj)
@@ -713,6 +721,10 @@ classdef UDPServer < handle
                 % Get some values from the received datagramPacket and
                 % store them in a struct
                 receivedPacket.remoteIP   = char(udpObj.dataPacket.getAddress().toString());
+                if ( length(receivedPacket.remoteIP) > 1 )
+                    % Remove the leading '/'...
+                    receivedPacket.remoteIP   = receivedPacket.remoteIP(2:end);
+                end
                 receivedPacket.remotePort = udpObj.dataPacket.getPort();
                 receivedPacket.length     = udpObj.dataPacket.getLength();
                 % Check data field of received packet

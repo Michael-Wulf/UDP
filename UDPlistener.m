@@ -1,9 +1,10 @@
-function UDPlistener(src, eventData)
+function UDPlistener(udpServerObj, eventData)
 %UDPLISTENER Summary of this function goes here
 %   Detailed explanation goes here
 
     if ( strcmpi(eventData.EventName, 'DataReceived') )
-        tempValue = src.getPacket()
+        tempValue = udpServerObj.getPacket();
+        disp(tempValue);
     end
 end
 
