@@ -1,21 +1,69 @@
 classdef UDPServer < handle
-    %UDPSERVER Implementation of a UDP DatagramSocket (Java) server
-    %   Detailed explanation goes here
-    % EXAMPLE
+    % UDPSERVER Implementation of a UDP-Server based on Java DatagramSockets
+    % 
+    % This class implements a UDP server based on Java classes. To avoid polling
+    % the underlying datagramSocket implementation to check for received data
+    % packets, this class also implements a timer-based mechanism to
+    % periodically check for existing data. For a simplified access of the
+    % received data, this class implements an event DataReceived which is raised
+    % whenever new data is available.
     %
-    % Date
-    % Version
+    % Examples
+    % --------
+    % Example 1:
+    %  % Create a UDP server on the loopback interface (172.0.0.1) on port 11724
+    %  udpServer = UDPServer('port', 11724);
+    %  % Add a listener ti the DataReceived event
+    %  addlistener(udpServer, 'DataReceived', @UDPlistener);
+    %  % Start the server
+    %  udpServer.start();
+    %  
+    %  ...
+    %  
+    %  % Stop the server
+    %  udpServer.stop();
+    %  % delete the object -> call destructor
+    %  delete(udpServer);
+    % 
+    %  % Implementation of the event listener
+    %  function UDPlistener(udpServerObj, eventData)
+    %    if ( strcmpi(eventData.EventName, 'DataReceived') )
+    %      tempValue = udpServerObj.getPacket();
+    %    end
+    %  end
+    %  
+    % 
+    % Example 2:
+    %  % Create a UDP server on the interface eth0 on port 11724
+    %  udpServer = UDPServer('interface', 'eth0', 'port', 11724);
+    %
+    % Example 3:
+    %  % Create/bind a UDP server on the ip address 192.168.1.112 on port 11724
+    %  udpServer = UDPServer('ip', '192.168.1.112', 'port', 11724);
+    %
+    %
+    % --------------------------------------------------------------------------
+    % Author:  Michael Wulf
+    %          Cold Spring Harbor Laboratory
+    %          Kepecs Lab
+    %          One Bungtown Road
+    %          Cold Spring Harboor
+    %          NY 11724, USA
+    % 
+    % Date:    11/12/2018
+    % Version: 1.0.0
+    % --------------------------------------------------------------------------
         
     properties (Access = public)
     end
     
     properties (GetAccess = public, SetAccess = protected)
-        interface;         % Network interface the server listens on
-        ip;                % IPv4-address the server listens on
-        ipv6;              % IPv6-address the server listens on
-        port;              % UDP-port the server listens on (required property)
-        MTU;               % Maximum transfer unit (default: 1500 byte)
-        timerInterval = 20 % Interval (ms) to check for new data (default: 20 ms)
+        interface;          % Network interface the server listens on
+        ip;                 % IPv4-address the server listens on
+        ipv6;               % IPv6-address the server listens on
+        port;               % UDP-port the server listens on (required property)
+        MTU;                % Maximum transfer unit (default: 1500 byte)
+        timerInterval = 20; % Interval (ms) to check for new data (default: 20 ms)
     end
     
     properties (Access = private)
@@ -33,13 +81,71 @@ classdef UDPServer < handle
     end
     
     events
+        % DATARECEIVED Event that is raised whenever new data is received by
+        % the UDP server.
+        % A valid listener function must have the following signature:
+        % function_name(serverObject, eventData)
+        % 
+        % Example:
+        % Implementation of a event listener function
+        % function UDPlistener(udpServerObj, eventData)
+        %   if ( strcmpi(eventData.EventName, 'DataReceived') )
+        %     tempValue = udpServerObj.getPacket();
+        %   end
+        % end
+        %
+        % % Add listener
+        % addlistener(udpServer, 'DataReceived', @UDPlistener);
         DataReceived;
     end
     
     methods (Access = public)
         function obj = UDPServer(varargin)
             %UDPSERVER Create a UDPServer object for receiving messages
-            %   Detailed explanation goes here
+            %
+            % A UDPServer object can be specified for a given interface (e.g.
+            % 'eth0') or an IP address (e.g. 192.168.1.112, IPv4 and IPv6 
+            % addresses are both valid) and the server will be bound to e
+            % specified port (required argument)
+            %
+            % For this constructor, the following properties can be specified:
+            %
+            % - 'port': The UDP port the server will listen on (required)
+            %     - data type: numeric, scalar
+            %     - required property
+            %     - only ports between 1025 and 65535 are allowed
+            %
+            % - 'interface': The network interface the server will be bound to
+            %     - datatype: char-vector (string)
+            %     - not required property
+            %     - if not specified, the interface will be automatically be
+            %     determined by the given IP address. If alos no IP address is
+            %     specified, the loopback interface ('lo', 127.0.0.1) will be
+            %     used.
+            %     Call UDPServer.availableInterfaces() for a list of available
+            %     interfaces of the current system.
+            %
+            % - 'ip': The IP address (IPv4 or IPv6) the server will be bound to
+            %     - datatype: char-vector (string)
+            %     - not required property
+            %     - if not specified, the IP address will be automatically be
+            %     determined by the given interface. If also no interface is
+            %     specified, the loopback address (127.0.0.1, 'lo') will be
+            %     used.
+            %
+            % Examples
+            % --------
+            % Example 1:
+            %  % Create a UDP server on the loopback interface (172.0.0.1) on port 11724
+            %  udpServer = UDPServer('port', 11724);
+            % 
+            % Example 2:
+            %  % Create a UDP server on the interface eth0 on port 11724
+            %  udpServer = UDPServer('interface', 'eth0', 'port', 11724);
+            %
+            % Example 3:
+            %  % Create/bind a UDP server on the ip address 192.168.1.112 on port 11724
+            %  udpServer = UDPServer('ip', '192.168.1.112', 'port', 11724);
             
             % Necessary Java imports
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -409,6 +515,24 @@ classdef UDPServer < handle
         
         function setMTU(obj, mtu)
             %SETMTU Setting the maximum transfer unit
+            
+            % Check attributes
+            validateattributes(mtu, {'numeric'}, {'real', 'positive', '<=', 1500}, 'setMTU', 'tu');
+            
+            if ( (obj.running) || (obj.socketOpened) )
+                warning('Unable to set mtu property while server is running!');
+                return;
+            end
+            
+            % Set property
+            obj.MTU  = mtu;
+            
+            % Create new an empty byte array
+            obj.dpBuffer = uint8(zeros(1, obj.MTU));
+            
+            % Create a datagram packet that will be used for temp. storin
+            % received data
+            obj.dataPacket = DatagramPacket(obj.dpBuffer, obj.MTU);
         end
         
         function setTimerInterval(obj, interval)
@@ -418,7 +542,7 @@ classdef UDPServer < handle
             validateattributes(interval, {'numeric'}, {'real', 'positive', '>=', 20}, 'setTimerInterval', 'interval');
             
             if (obj.running)
-                warning('Unable to set timer interval while timer is running!');
+                warning('Unable to set timer interval while server is running!');
                 return;
             end
             
@@ -491,7 +615,7 @@ classdef UDPServer < handle
         end
                 
         function stop(obj)
-            %STOP
+            %START Start the UDP server and close the specified port!
             
             % Necessary Java imports
             import java.net.*;
@@ -514,6 +638,13 @@ classdef UDPServer < handle
         end
         
         function packet = getPacket(obj)
+            %GETPACKET Get the first received packet from the server's buffer
+            %
+            % A packet is a MATLAB struct with the following fields:
+            % packet.remoteIP:   IP address of the remote host
+            % packet.remotePort: The UDP port of the remote host that was used to send this packet
+            % packet.length:     The length of the payload (number of bytes)
+            % packet.data:       The data field (payload) of the packet (datatype: byte/uint8)
             
             if (length(obj.rxBuffer) > 0) %#ok<ISMT>
                 packet = obj.rxBuffer{1};
@@ -525,6 +656,8 @@ classdef UDPServer < handle
         
         function delete(obj)
             %DELETE Destructor of this class
+            %
+            % Cecks that the UDP port is closed and the timer is deleted
             
             %disp('UDPServer destructor');
             
@@ -550,6 +683,7 @@ classdef UDPServer < handle
     
     methods (Access = private)
         function rxTimerCallback(udpObj, timerObj, eventData)
+            %rxTimerCallback Callback function for internally used timer object
             
             dataReceived = 0;
             % Try to access the datagramSocket
