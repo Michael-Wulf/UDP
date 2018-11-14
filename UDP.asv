@@ -960,14 +960,24 @@ classdef UDP < handle
                     case 'MATLAB:Java:GenericException'
                         excMessage = char(ME.ExceptionObject.getMessage);
                         if (contains(excMessage, 'Network is unreachable'))
-                            warning('Remote not accessible: %s:%d', txDatagram.remoteIP, txDatagram.remotePort);
-                        else
-                            warning('Something went wrong... Java-Exception: %s Message: ', class(ME.ExceptionObject), excMessage);
+                            warning('Remote not accessible: %s:%d' txDatagram.remoteIP ':' 
+                        switch (class(excobj))
+                            case 'java.net.SocketException'
+                                % This is the usual message when port is already in use...
+
+                            otherwise
+                                warning('Something went wrong... Java-Exception: %s', class(excobj))
                         end
                         
                         % Check for MATLAB exceptions
                     otherwise
-                        warning('Something went wrong! %s %s', ME.identifier, ME.message);
+                        % Try to close the port at least...
+                        try
+                            obj.dataSocket.close();
+                        catch
+                            % Do nothing...
+                        end
+                        
                 end
             end
         end
