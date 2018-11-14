@@ -9,12 +9,12 @@ function UDP_Example_Echo_Listener(udpObj, eventData)
         fprintf('Remote host: %s \n', datagram.remoteIP);
         fprintf('Remote port: %d \n', datagram.remotePort);
         fprintf('Number of received bytes: %d \n', datagram.length);
-        fprintf('Received bytes (hex): %02X', datagram.data);
+        fprintf('Received bytes (hex): ');
+        fprintf('%02X ', datagram.data);
         fprintf('\n\n');
         
-        
-        
-        
+        % Simply send the datagram back...
+        udpObj.sendDatagram(datagram);
     end
 end
 

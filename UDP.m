@@ -263,82 +263,25 @@ classdef UDP < handle
             
             % check ip value
             ipVersion = 0;
-            if (~isempty(properties.port))
+            if (~isempty(properties.ip))
                 if (~ischar(properties.ip))
                     error('Property ''ip'' must be a string defining the ip address the UDP instance should be bind to (e.g. ''127.0.0.1'' (loopback lo), 192.168.1.1 - IPv6 addresses are also valid)');
                 end
                 
-                if ( strfind(properties.ip,'.') )
-                    %IPv4
+                
+                ipElements = convertIPAddress(properties.ip);
+                
+                if ( isempty(ipElements) )
+                    error(['Specified IP4 address (' properties.ip ') could not be parsed!']);
+                    
+                elseif ( length(ipElements) == 4 )
                     ipVersion = 4;
                     
-                    ipElements = strsplit(properties.ip, '.');
-                    if ( length(ipElements) ~= 4 )
-                        error(['Specified IP address (' properties.ip ') has the wrong format!']);
-                    end
-                    ipElements = cellfun(@str2num, ipElements, 'UniformOutput', false);
-                    
-                    if ( find(cellfun(@isempty, ipElements), 1) )
-                        error(['Specified IP address (' properties.ip ') has the wrong format!']);
-                    end
-                    
-                    ipElements = cell2mat(ipElements);
-                    if ( ~isempty(find(ipElements > 255, 1)) || ~isempty(find(ipElements < 0, 1)) || ~isempty(find(mod(ipElements, 1), 1)) )
-                        error(['Specified IP address (' properties.ip ') has the wrong format!']);
-                    end
-                    ipElements = uint8(ipElements);
-                    
-                elseif ( strfind(properties.ip,':') )
-                    %IPv6 format
-                    
+                elseif ( length(ipElements) == 16 )
                     ipVersion = 6;
                     
-                    % Split string at colons and check that there are 8
-                    % parts...
-                    ipElements = strsplit(properties.ip, ':');
-                    if ( length(ipElements) ~= 8 )
-                        error(['Format of specified IPv6 address (' properties.ip ') not supported!' ...
-                            'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
-                    end
-                    
-                    % Convert hexadecimal notation to decimal form
-                    try
-                        ipElements = cellfun(@hex2dec, ipElements, 'UniformOutput', false);
-                    catch ME
-                        error(['Format of specified IPv6 address (' properties.ip ') not supported!' ...
-                            'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
-                    end
-                    
-                    % Empty elements mean that the IPv6 address was not entered
-                    % as hexa-decimal values
-                    if ( find(cellfun(@isempty, ipElements), 1) )
-                        error(['Suppressed or shortened elements in IPv6 address format (' properties.ip ') not supported!' ...
-                            'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
-                    end
-                    
-                    % Convert cell array to matrix/vector
-                    ipElements = cell2mat(ipElements);
-                    
-                    % Check that only 16-bit values were entered (uint16 < 65536)
-                    if ( ~isempty(find(ipElements > 65535, 1)) )
-                        error(['Format of specified IPv6 address (' properties.ip ') not supported!' ...
-                            'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
-                    end
-                    
-                    % Now convert 8 x 16-bit values to 16 x 8-bit values
-                    
-                    ipElementsTemp = ipElements;
-                    
-                    ipElements = uint8(zeros(1, 16));
-                    
-                    for cntr=1:1:length(ipElementsTemp)
-                        id = 2 * (cntr-1) + 1;
-                        currHextet       = ipElementsTemp(cntr);
-                        ipElements(id)   = uint8(bitand(bitshift(currHextet, -8), 255));
-                        ipElements(id+1) = uint8(bitand(currHextet, 255));
-                    end
-                    clear currHextet ipElementsTemp;
                 end
+               
             else
                 % No interface specified -> wildcard interface (0.0.0.0)
             end
@@ -458,7 +401,7 @@ classdef UDP < handle
                 
                 obj.inetAddress = [];
                 
-                % Interate through all IP addresses
+                % Iterate through all IP addresses
                 while ( inetEnum.hasMoreElements() )
                     currInet = inetEnum.nextElement();
                     % Cast to string
@@ -695,12 +638,19 @@ classdef UDP < handle
             % Set property
             obj.MTU  = mtu;
             
-            % Create new an empty byte array
-            obj.dpBuffer = uint8(zeros(1, obj.MTU));
+            % Create an empty byte buffer for the receiving datagramPacket
+            obj.dpRxBuffer = uint8(zeros(1, obj.MTU));
             
             % Create a datagram packet that will be used for temp. storin
             % received data
-            obj.dataPacket = DatagramPacket(obj.dpBuffer, obj.MTU);
+            obj.dataPacketRx = DatagramPacket(obj.dpRxBuffer, obj.MTU);
+            
+            % Create an empty byte buffer for the transmitting datagramPacket
+            obj.dpTxBuffer = uint8(zeros(1, obj.MTU));
+            
+            % Create a datagram packet that will be used for temp. storin
+            % transmitted data
+            obj.dataPacketTx = DatagramPacket(obj.dpTxBuffer, obj.MTU);
         end
         
         function setTimerInterval(obj, interval)
@@ -895,6 +845,9 @@ classdef UDP < handle
             % datagram.length:     The length of the payload (number of bytes)
             % datagram.data:       The data field (payload) of the datagram (datatype: byte/uint8)
             
+            % Necessary Java imports
+            import java.net.*;
+            
             if (length(obj.rxBuffer) > 0) %#ok<ISMT>
                 datagram = obj.rxBuffer{1};
                 obj.rxBuffer(1) = [];
@@ -906,7 +859,15 @@ classdef UDP < handle
         function sendDatagram(obj, varargin)
             %SENDDATAGRAM Send a datagram via this UDP instance
             
+            % Necessary Java imports
+            import java.net.*;
             
+            % First check if the port is open!
+            if ( obj.socketOpened == 0 )
+                warning('Can''t send anything via a closed UDP port... Open it first!');
+            end
+            
+            % Specify some values to check the arguments
             requiredFieldnames = {'remoteIP', 'remotePort', 'data'};
             validFieldnames    = [requiredFieldnames, {'length'}];
             
@@ -916,39 +877,81 @@ classdef UDP < handle
             txDatagram.data       = uint8([]);
             
             if ( nargin < 2)
-                warning('Specify something to send!')
-            end
-            
-            if ( nargin == 2)
-                if ( isstruct(varargin{2}) )
-                    tempStruct = varargin{2};
-                    tempFnames = fieldnames(tempStruct);
+                warning('No datagram passed to be sent!')
+                
+            elseif ( nargin == 2)
+                % Just one argument -> datagram as a struct
+                if ( isstruct(varargin{1}) )
+                    tempStruct = varargin{1};
+                    tempFNames = fieldnames(tempStruct);
                     for cntr=1:1:length(requiredFieldnames)
-                        if (isempty(find(strcmpi(tempFnames, requiredFieldnames{cntr}), 1)))
+                        if (isempty(find(strcmpi(tempFNames, requiredFieldnames{cntr}), 1)))
                             warning(['Required fieldname ''' requiredFieldnames{cntr} ''' missing in datagram struct to be sent!']);
                             return;
                         end
                     end
                     if ( ~ischar(tempStruct.remoteIP) )
-                        warning('remote IP address must be specified as string1');
+                        warning('remote IP address must be specified as string!');
                         return;
                     end
-                    txDatagram.remoteIP   = tempStruct.remoteIP;
+                    
+                    % Store IP address
+                    txDatagram.remoteIP = tempStruct.remoteIP;
                     
                     if ( ~isnumeric(tempStruct.remotePort) )
                         warning('Remote port must be specified as numerical value!');
                         return;
                     elseif ( mod(tempStruct.remotePort, 1) ~= 0 )
+                        warning('Remote port must be an integer value between 1 and 65535!');
+                        return;
+                    elseif ( (tempStruct.remotePort < 1) || (tempStruct.remotePort > 65535) )
+                        warning('Remote port must be an integer value between 1 and 65535!');
+                        return;
                     end
-                    txDatagram.remotePort = [];
-                    txDatagram.length     = 0;
-                    txDatagram.data       = uint8([]);
+                    
+                    % Store port
+                    txDatagram.remotePort = tempStruct.remotePort;
+                    
+                    if ( isempty(tempStruct.data) )
+                        txDatagram.data = uint8([]);
+                    elseif ( ~isa(txDatagram.data, 'uint8') )
+                        warning('Data inside the datagram must be a uint8 vector!');
+                        return;
+                    elseif ( isa(tempStruct.data, 'uint8') )
+                        txDatagram.data = tempStruct.data;
+                    end
+                    
+                else
+                    warning('Passed datagram must be a struct!');
+                    return;
                 end
             end
             
-            if ( obj.socketOpened == 0 )
-                warning('Can''t send anything via a closed UDP port... Open it first!');
-            end
+            txDatagram.length = length(txDatagram.data);
+            
+            
+            
+            % Clear tx buffer array
+            obj.dpTxBuffer = uint8(zeros(1, obj.MTU));
+            obj.dpTxBuffer(1:txDatagram.length) = txDatagram.data;
+            
+            
+            % Bind buffer and length of buffer to the DatagramPacket object
+            obj.dataPacketTx = DatagramPacket(obj.dpTxBuffer, obj.MTU);
+            
+            % Set data length attribute of DatagramPAcket
+            obj.dataPacketTx.setLength(txDatagram.length);
+            
+            % Set IP address
+            ipElements = UDP.convertIPAddress(txDatagram.remoteIP);
+            inet = InetAddress.getByAddress(ipElements);
+            obj.dataPacketTx.setAddress(inet);
+            
+            % Set port
+            obj.dataPacketTx.setPort(txDatagram.remotePort);
+            
+            % Send the datagram
+            obj.dataSocket.send(obj.dataPacketTx);
             
         end
         
@@ -1079,5 +1082,93 @@ classdef UDP < handle
                 ifaces(end,  3) = currIface.toString();
             end 
         end % availableInterfaces()
+        
+        function ipElements = convertIPAddress(ipString)
+            %CONVERTIPADDRESS Convert an IP address as a string into a byte
+            %array
+            
+            ipElements = [];
+           
+            if ( ~ischar(ipString) )
+                warning('Specified IP address must be a string!');
+                return;
+            end
+            
+            
+            if ( contains(ipString,'.') )
+                %IPv4 format
+                
+                ipElements = strsplit(ipString, '.');
+                if ( length(ipElements) ~= 4 )
+                    warning(['Specified IPv4 address (' ipString ') has the wrong format!']);
+                    return;
+                end
+                ipElements = cellfun(@str2num, ipElements, 'UniformOutput', false);
+                
+                if ( find(cellfun(@isempty, ipElements), 1) )
+                    warning(['Specified IPv4 address (' ipString ') has the wrong format!']);
+                    return;
+                end
+                
+                ipElements = cell2mat(ipElements);
+                if ( ~isempty(find(ipElements > 255, 1)) || ~isempty(find(ipElements < 0, 1)) || ~isempty(find(mod(ipElements, 1), 1)) )
+                    warning(['Specified IPv4 address (' properties.ip ') has the wrong format!']);
+                    return;
+                end
+                ipElements = uint8(ipElements);
+                
+            elseif ( contains(ipString,':') )
+                %IPv6 format
+                
+                % Split string at colons and check that there are 8
+                % parts...
+                ipElements = strsplit(ipString, ':');
+                if ( length(ipElements) ~= 8 )
+                    warning(['Format of specified IPv6 address (' ipString ') not supported!' ...
+                        'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
+                    return;
+                end
+                
+                % Convert hexadecimal notation to decimal form
+                try
+                    ipElements = cellfun(@hex2dec, ipElements, 'UniformOutput', false);
+                catch ME %#ok<NASGU>
+                    warning(['Format of specified IPv6 address (' ipString ') not supported!' ...
+                        'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
+                    return;
+                end
+                
+                % Empty elements mean that the IPv6 address was not entered
+                % as hexa-decimal values
+                if ( find(cellfun(@isempty, ipElements), 1) )
+                    warning(['Suppressed or shortened elements in IPv6 address format (' ipString ') not supported!' ...
+                        'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
+                    return;
+                end
+                
+                % Convert cell array to matrix/vector
+                ipElements = cell2mat(ipElements);
+                
+                % Check that only 16-bit values were entered (uint16 < 65536)
+                if ( ~isempty(find(ipElements > 65535, 1)) )
+                    error(['Format of specified IPv6 address (' ipString ') not supported!' ...
+                        'Please enter all 16 byte as hex values in the format X:X:X:X:X:X:X:X']);
+                end
+                
+                % Now convert 8 x 16-bit values to 16 x 8-bit values
+                
+                ipElementsTemp = ipElements;
+                
+                ipElements = uint8(zeros(1, 16));
+                
+                for cntr=1:1:length(ipElementsTemp)
+                    id = 2 * (cntr-1) + 1;
+                    currHextet       = ipElementsTemp(cntr);
+                    ipElements(id)   = uint8(bitand(bitshift(currHextet, -8), 255));
+                    ipElements(id+1) = uint8(bitand(currHextet, 255));
+                end
+                clear currHextet ipElementsTemp;
+            end
+        end
     end % static methods
 end % classdef
