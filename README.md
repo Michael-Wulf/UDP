@@ -28,6 +28,6 @@ MATLAB UDP client/server implementation
 | | Spacer for Arduino Due | Bivar Inc.  | Round Spacer Nylon 1/4" | DigiKey | [492-1074-ND](https://www.digikey.com/product-detail/en/9908-250/492-1074-ND "DigiKey 492-1074-ND") |
 | | Spacer for Bpod PCB | Bivar Inc.  | Round Spacer Nylon 3/4" | DigiKey | [492-1081-ND](https://www.digikey.com/product-detail/en/9908-750/492-1081-ND "DigiKey 492-1081-ND") |
 | | Screw for Arduino Due | B&F | Screw 4-40 Phillips, 0.625" thread length | DigiKey | [H348-ND](https://www.digikey.com/product-detail/en/b-f-fastener-supply/PMS-440-0063-PH/H348-ND "H348-ND") |
-| | Screw for Bpod PCB | McMaster-Carr | Screw 4-40 Phillips, 1.125" thread length | McMaster-Carr | [91772A118](https://www.mcmaster.com/91772A118"DigiKey 91772A118") |
+| | Screw for Bpod PCB | McMaster-Carr | Screw 4-40 Phillips, 1.125" thread length | McMaster-Carr | [91772A118](https://www.mcmaster.com/91772A118 "DigiKey 91772A118") |
 | | Screws for Enclosure | B&F | Screw 4-40 Phillips, 0.5" thread length | DigiKey | [H346-ND](https://www.digikey.com/product-detail/en/b-f-fastener-supply/PMS-440-0050-PH/H346-ND "DigiKey H346-ND") |
 | | Hex-Nuts| McMaster-Carr | Hex Nut 1/4" 4-40 | McMaster-Carr| [90480A005](https://www.mcmaster.com/90480A005 "DigiKey 90480A005") |
