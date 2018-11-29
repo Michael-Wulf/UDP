@@ -3,7 +3,7 @@ MATLAB UDP client/server implementation
 
 | Part Name | Description | Manufacturer | Name | Vendor | Part-Number |
 | --- | --- | --- | --- | --- | --- |
-| | Arduino Due | Arduino | Arduino Due | Digikey | [1050-1049-ND](https://www.digikey.com/product-detail/en/arduino/A000062/1050-1049-ND "DigiKey 1050-1049-ND) |
+| | Arduino Due | Arduino | Arduino Due | Digikey | [1050-1049-ND](https://www.digikey.com/product-detail/en/arduino/A000062/1050-1049-ND "DigiKey 1050-1049-ND") |
 | | DC/DC converter | TDK Lambda | CC10-0512SF-E | DigiKey | 445-2433-ND |
 | `VALVE_REGISTER` | Power Shift Register | Texas Instruments | TPIC6A595 | DigiKey | 296-9007-5-ND |
 | `SYNC_REGISTER` | Shift Register | Texas Instruments, STMicro, NXP, … | 74HC595 | DigiKey | 296-1600-5-ND |
