@@ -1,12 +1,15 @@
 # Bpod r0.5.1 PCB
-Minor improvements compared to the original Bpod r0.5 release
+Minor improvements compared to the original Bpod r0.5 release:
+⋅⋅* Added bypass-capacitors to the VCC-inputs of all ICs
+⋅⋅* Added GND polygon on top and bottom layer
+⋅⋅* Rerouted the layout to reduce cross-talk between adjacent outputs ports
 
 ## Assembly instructions
 Will be updted soon...
-For now see: https://sites.google.com/site/bpoddocumentation/assembling-bpod/instructions
+For now see:
+https://sites.google.com/site/bpoddocumentation/assembling-bpod/instructions
 
-MATLAB UDP client/server implementation
-
+## Bill of materials (BOM)
 | Part Name | Description | Manufacturer | Name | Vendor | Part-Number |
 | --- | --- | --- | --- | --- | --- |
 | | Arduino Due | Arduino | Arduino Due | DigiKey | [1050-1049-ND](https://www.digikey.com/product-detail/en/arduino/A000062/1050-1049-ND "DigiKey 1050-1049-ND") |
