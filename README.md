@@ -1,8 +1,8 @@
 # Bpod r0.5.1 PCB
 Minor improvements compared to the original Bpod r0.5 release:
-⋅⋅* Added bypass-capacitors to the VCC-inputs of all ICs
-⋅⋅* Added GND polygon on top and bottom layer
-⋅⋅* Rerouted the layout to reduce cross-talk between adjacent outputs ports
+* Added bypass-capacitors to the VCC-inputs of all ICs
+* Added GND polygon on top and bottom layer
+* Rerouted the layout to reduce cross-talk between adjacent outputs ports
 
 ## Assembly instructions
 Will be updted soon...
