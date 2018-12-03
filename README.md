@@ -1,4 +1,10 @@
-# UDP
+# Bpod r0.5.1 PCB
+Minor improvements compared to the original Bpod r0.5 release
+
+## Assembly instructions
+Will be updted soon...
+For now see: https://sites.google.com/site/bpoddocumentation/assembling-bpod/instructions
+
 MATLAB UDP client/server implementation
 
 | Part Name | Description | Manufacturer | Name | Vendor | Part-Number |
