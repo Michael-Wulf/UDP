@@ -60,8 +60,8 @@ classdef UDP < handle
     %          Cold Spring Harboor
     %          NY 11724, USA
     % 
-    % Date:    11/13/2018
-    % Version: 1.0.0
+    % Date:    12/13/2018
+    % Version: 1.0.1
     % --------------------------------------------------------------------------
         
     properties (Access = public)
