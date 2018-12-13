@@ -836,6 +836,11 @@ classdef UDP < handle
             end
         end
         
+        function status = isopen(obj)
+            % ISOPEN Gtes the current status of the UDP port
+            status = obj.socketOpened;
+        end
+        
         function datagram = getDatagram(obj)
             %GETDATAGRAM Get the first received datagram from the UDP instance's receive buffer
             %
@@ -858,6 +863,11 @@ classdef UDP < handle
         
         function sendDatagram(obj, varargin)
             %SENDDATAGRAM Send a datagram via this UDP instance
+            % A datagram mus be given as a struct with the following fiels:
+            % - datagram.remoteIP: IP address of the remote host as a sttring (e.g. '127.0.0.1')
+            % - datagram.remotePort: The remote UDP port (port where the other application is listening on)
+            % - datagram.data: Payload of the datagram; must be an uint vector!
+            
             
             % Necessary Java imports
             import java.net.*;
@@ -869,7 +879,7 @@ classdef UDP < handle
             
             % Specify some values to check the arguments
             requiredFieldnames = {'remoteIP', 'remotePort', 'data'};
-            validFieldnames    = [requiredFieldnames, {'length'}];
+            validFieldnames    = [requiredFieldnames, {'length'}]; %#ok<NASGU>
             
             txDatagram.remoteIP   = '';
             txDatagram.remotePort = [];
@@ -1046,7 +1056,12 @@ classdef UDP < handle
                 receivedDatagram.length     = udpObj.dataPacketRx.getLength();
                 % Check data field of received packet
                 if (receivedDatagram.length > 0)
-                    data = uint8(udpObj.dataPacketRx.getData());
+                    % Convert and truncate the received payload%
+                    % udpObj.dataPacketRx.getData() delivers the data NOT as an
+                    % unsigned value (even though we specified the receive
+                    % buffer as uint8...)!!! That's why we have to cast it
+                    % again...
+                    data = typecast(udpObj.dataPacketRx.getData(), 'uint8');
                     receivedDatagram.data = data(1:receivedDatagram.length);
                     clear data;
                 else
