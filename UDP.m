@@ -60,8 +60,8 @@ classdef UDP < handle
     %          Cold Spring Harboor
     %          NY 11724, USA
     % 
-    % Date:    12/13/2018
-    % Version: 1.0.1
+    % Date:    12/18/2018
+    % Version: 1.0.2
     % --------------------------------------------------------------------------
         
     properties (Access = public)
@@ -269,7 +269,7 @@ classdef UDP < handle
                 end
                 
                 
-                ipElements = convertIPAddress(properties.ip);
+                ipElements = UDP.convertIPAddress(properties.ip);
                 
                 if ( isempty(ipElements) )
                     error(['Specified IP4 address (' properties.ip ') could not be parsed!']);
