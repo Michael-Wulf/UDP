@@ -1,17 +1,18 @@
 classdef UDP < handle
-    % UDP Implementation of the User Datagram Protocol (UDP) based on Java DatagramSockets
+    % UDP Implementation of a User Datagram Protocol (UDP) client/server based on Java DatagramSockets
     % 
-    % This class implements a UDP object based on Java classes. To avoid polling
-    % the underlying datagramSocket implementation to check for received data
-    % packets, this class also implements a timer-based mechanism to
-    % periodically check for newly received data. For a simplified access of the
-    % received data, this class implements an event DataReceived which is raised
-    % whenever new data is available.
+    % This class implements a UDP client/server object based on Java classes.
+    % To avoid polling the underlying datagramSocket implementation to check
+    % for received data packets, this class also implements a timer-based
+    % mechanism to periodically check for newly received data. For a simplified 
+    % access of the received data, this class implements an event DataReceived
+    % which is raised whenever new data is available.
     %
     % Examples
     % --------
     % Example 1:
-    %  % Create a UDP instance on the loopback interface listening on a random port
+    %  % Create a UDP instance on the loopback interface
+    %  % and listen on a random port
     %  udpServer = UDP();
     %  Check port
     %  disp(num2str(udpServer.port()));
@@ -21,9 +22,10 @@ classdef UDP < handle
     %  disp(udpServer.ip());
     %
     % Example 2:
-    %  % Create a UDP instance on the loopback interface (172.0.0.1) on port 11724
+    %  % Create a UDP instance on the loopback interface (172.0.0.1) and listen
+    %  % on port 11724
     %  udpServer = UDP('port', 11724);
-    %  % Add a listener ti the DataReceived event
+    %  % Add a listener to the DataReceived event
     %  addlistener(udpServer, 'DataReceived', @UDPlistener);
     %  % Start the UDP instance
     %  udpServer.start();
@@ -44,24 +46,23 @@ classdef UDP < handle
     %  
     % 
     % Example 3:
-    %  % Create a UDP instance on the interface eth0 on port 11724
+    %  % Create/bind a UDP instance on the interface eth0 and listen on port
+    %  % 11724
     %  udpServer = UDP('interface', 'eth0', 'port', 11724);
     %
     % Example 4:
-    %  % Create/bind a UDP instance on the IP address 192.168.1.112 on port 11724
+    %  % Create/bind a UDP instance on the IP address 192.168.1.112 and listen
+    %  % on port 11724
     %  udpServer = UDP('ip', '192.168.1.112', 'port', 11724);
     %
     %
     % --------------------------------------------------------------------------
     % Author:  Michael Wulf
-    %          Cold Spring Harbor Laboratory
+    %          Washington University in St. Louis
     %          Kepecs Lab
-    %          One Bungtown Road
-    %          Cold Spring Harboor
-    %          NY 11724, USA
     % 
-    % Date:    12/18/2018
-    % Version: 1.0.2
+    % Date:    03/14/2022
+    % Version: 1.0.3
     % --------------------------------------------------------------------------
         
     properties (Access = public)
