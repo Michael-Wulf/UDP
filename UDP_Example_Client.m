@@ -1,23 +1,21 @@
 % Example for a simple UDP based client
 %
 % Create a simple UDP client sending on the loopback interface on port
-% 11724. Use an TCP/UDP test tool (e.g. Packet Sender
+% 63110. Use an TCP/UDP test tool (e.g. Packet Sender
 % https://packetsender.com) to receive the UDP datagrams.
 %
-% ------------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 % Author:  Michael Wulf
-%          Cold Spring Harbor Laboratory
+%          Washington University in St. Louis
 %          Kepecs Lab
-%          One Bungtown Road
-%          Cold Spring Harboor
-%          NY 11724, USA
 %
-% Date:    11/13/2018
-% Version: 1.0.0
-% ------------------------------------------------------------------------------
+% Date:    03/16/2022
+% Version: 1.0.1
+% GitHub:  https://github.com/Michael-Wulf/UDP
+% -------------------------------------------------------------------------
 
-% Create a UDP instance on the loopback interface on a random port
-udpClient = UDP('interface', 'lo', 'port', 11724);
+% Create a UDP instance on the loopback interface on port 63110
+udpClient = UDP('interface', 'lo', 'port', 63110);
 
 % Don't add a listener funtion
 
@@ -25,7 +23,7 @@ udpClient = UDP('interface', 'lo', 'port', 11724);
 udpClient.open();
 
 datagram.remoteIP   = '127.0.0.1';
-datagram.remotePort = 11725;
+datagram.remotePort = 63111;
 datagram.data       = [];
 
 cntr = 0;

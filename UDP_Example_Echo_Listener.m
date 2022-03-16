@@ -1,5 +1,15 @@
 function UDP_Example_Echo_Listener(udpObj, eventData)
-%UDPSERVER_EXAMPLE_LISTENER Example for a UDP listener waiting for DataReceived events to occure
+%UDPSERVER_EXAMPLE_LISTENER Example for a UDP listener waiting for DataReceived events to occur
+% 
+% -------------------------------------------------------------------------
+% Author:  Michael Wulf
+%          Washington University in St. Louis
+%          Kepecs Lab
+%
+% Date:    03/16/2022
+% Version: 1.0.1
+% GitHub:  https://github.com/Michael-Wulf/UDP
+% -------------------------------------------------------------------------
     
     % Check for only DataReceived events
     if ( strcmpi(eventData.EventName, 'DataReceived') )

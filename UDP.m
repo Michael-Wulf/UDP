@@ -23,8 +23,8 @@ classdef UDP < handle
     %
     % Example 2:
     %  % Create a UDP instance on the loopback interface (172.0.0.1) and listen
-    %  % on port 11724
-    %  udpServer = UDP('port', 11724);
+    %  % on port 63110
+    %  udpServer = UDP('port', 63110);
     %  % Add a listener to the DataReceived event
     %  addlistener(udpServer, 'DataReceived', @UDPlistener);
     %  % Start the UDP instance
@@ -47,23 +47,24 @@ classdef UDP < handle
     % 
     % Example 3:
     %  % Create/bind a UDP instance on the interface eth0 and listen on port
-    %  % 11724
-    %  udpServer = UDP('interface', 'eth0', 'port', 11724);
+    %  % 63110
+    %  udpServer = UDP('interface', 'eth0', 'port', 63110);
     %
     % Example 4:
     %  % Create/bind a UDP instance on the IP address 192.168.1.112 and listen
-    %  % on port 11724
-    %  udpServer = UDP('ip', '192.168.1.112', 'port', 11724);
+    %  % on port 63110
+    %  udpServer = UDP('ip', '192.168.1.112', 'port', 63110);
     %
     %
-    % --------------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     % Author:  Michael Wulf
     %          Washington University in St. Louis
     %          Kepecs Lab
     % 
-    % Date:    03/14/2022
+    % Date:    03/16/2022
     % Version: 1.0.3
-    % --------------------------------------------------------------------------
+    % GitHub:  https://github.com/Michael-Wulf/UDP
+    % ---------------------------------------------------------------------
         
     properties (Access = public)
     end
@@ -151,16 +152,16 @@ classdef UDP < handle
             % Examples
             % --------
             % Example 2:
-            %  % Create a UDP instance on the loopback interface (127.0.0.1) on port 11724
-            %  udpServer = UDP('port', 11724);
+            %  % Create a UDP instance on the loopback interface (127.0.0.1) on port 63110
+            %  udpServer = UDP('port', 63110);
             % 
             % Example 3:
-            %  % Create a UDP instance on the interface eth0 on port 11724
-            %  udpServer = UDP('interface', 'eth0', 'port', 11724);
+            %  % Create a UDP instance on the interface eth0 on port 63110
+            %  udpServer = UDP('interface', 'eth0', 'port', 63110);
             %
             % Example 4:
-            %  % Create/bind a UDP server on the ip address 192.168.1.112 on port 11724
-            %  udpServer = UDP('ip', '192.168.1.112', 'port', 11724);
+            %  % Create/bind a UDP server on the ip address 192.168.1.112 on port 63110
+            %  udpServer = UDP('ip', '192.168.1.112', 'port', 63110);
             
             % Necessary Java imports
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

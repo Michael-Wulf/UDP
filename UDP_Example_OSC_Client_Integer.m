@@ -1,27 +1,25 @@
 % Example for a simple UDP client that sends out an OSC Message with one integer
 %
 % Create a simple UDP client sending on the loopback interface on port
-% 11724 to port 11725. Use an TCP/UDP test tool (e.g. Packet Sender
+% 63110 to port 63111. Use an TCP/UDP test tool (e.g. Packet Sender
 % https://packetsender.com) or an OSC compatible tool to receive the UDP
 % datagrams or the encapsulated OSC message...
 %
-% ------------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 % Author:  Michael Wulf
-%          Cold Spring Harbor Laboratory
+%          Washington University in St. Louis
 %          Kepecs Lab
-%          One Bungtown Road
-%          Cold Spring Harboor
-%          NY 11724, USA
 %
-% Date:    12/04/2018
-% Version: 1.0.0
-% ------------------------------------------------------------------------------
+% Date:    03/16/2022
+% Version: 1.0.1
+% GitHub:  https://github.com/Michael-Wulf/UDP
+% -------------------------------------------------------------------------
 
 % Add path for OSCMessage implementation
 addpath(genpath('../OSCMessage'));
 
-% Create a UDP instance on the loopback interface on a random port
-udpClient = UDP('interface', 'lo', 'port', 11724);
+% Create a UDP instance on the loopback interface on port 63110
+udpClient = UDP('interface', 'lo', 'port', 63110);
 
 % Don't add a listener funtion
 
@@ -30,7 +28,7 @@ udpClient.open();
 
 % Create a datagram struct with the necessary fields 
 datagram.remoteIP   = '127.0.0.1';
-datagram.remotePort = 11725;
+datagram.remotePort = 63111;
 datagram.data       = [];
 
 % Set some values to be sent out via UDP
